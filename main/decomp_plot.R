@@ -7,22 +7,20 @@ file_path = "dataset/se_d_data.csv"
 data_orig <- read.csv(file_path)
 data_orig$date <- as.Date(data_orig$date, format = "%Y-%m-%d")
 
-# Edited (cleaned) data
-# copy data
-data_clean <- data_orig 
-# remove last data point since outlier and drops to zero (incomplete data point)
-data_clean <- subset(data_clean, date < as.Date("2026-04-12"))
-# convert to time series object
-ts_clean <- ts(data_clean$SE3, frequency = 7)
-# tsclean() removes any other hidden outlier
-ts_clean_val <- tsclean(ts_clean)
+# Log-transformed data
+# copy data and remove extreme outlier and aply log-transform
+data_log <- subset(data_orig, date < as.Date("2026-04-12"))
+data_log$SE3_log <- log(data_log$SE3)
+# create ts object
+ts_log <- ts(data_log$SE3_log, frequency = 7)
+ts_clean_val <- tsclean(ts_log)
 
 # STL Decomposition (X = trend + seasonality + noise)
 decomp <- stl(ts_clean_val, s.window = "periodic")
 
 # Now we have THREE seasonal columns to grab
 df_decomp <- data.frame(
-  Date = data_clean$date,
+  Date = data_log$date,
   Original = as.numeric(ts_clean_val),
   Trend = as.numeric(decomp$time.series[, "trend"]),
   Seasonal = as.numeric(decomp$time.series[, "seasonal"]),
@@ -49,8 +47,8 @@ interactive_plot <- subplot(fig_data, fig_trend, fig_season, fig_resid, nrows = 
     hovermode = "x unified"
   )
 
-saveWidget(interactive_plot, "se3_stl_decomp_7.html", selfcontained = TRUE)
-browseURL("se3_stl_decomp_7.html")
+saveWidget(interactive_plot, "se3_stl_decomp_7_log.html", selfcontained = TRUE)
+browseURL("se3_stl_decomp_7_log.html")
 
 noise <- decomp$time.series[, "remainder"]
 noise_mean <- mean(noise, na.rm = TRUE)
