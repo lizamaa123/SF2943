@@ -1,5 +1,4 @@
 library(zoo)
-library(tseries)
 
 # From STEP 1
 df <- read.csv("PART B/Bitcoin.csv") 
