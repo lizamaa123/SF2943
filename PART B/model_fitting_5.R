@@ -45,3 +45,6 @@ print("AR(1) parameter: ")
 print(model_ar1)
 print("MA(1) parameter: ")
 print(model_ma1)
+
+print("ARMA(1,1) parameter: ")
+print(model_arma11)
