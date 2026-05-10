@@ -5,6 +5,7 @@ import statsmodels.api as sm
 from statsmodels.tsa.arima.model import ARIMA
 import os
 import warnings
+from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 
 warnings.filterwarnings("ignore")
 
@@ -13,7 +14,6 @@ def load_data(file_path='se_d_data.csv', target_col='SE3'):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Could not find {file_path}")
     df = pd.read_csv(file_path, index_col='date', parse_dates=True)
-    df = df[(df.index >= '2017-05-01') & (df.index <= '2026-04-11')]
     df.index.freq = 'D'
     return df[target_col]
 
@@ -43,7 +43,7 @@ def fit_deterministic(x_t):
 def fit_stochastic(z_t):
     """Fit AR(8) model to the stationary residuals."""
     print("Fitting AR(8) model to residuals...")
-    ar_model = ARIMA(z_t, order=(8, 0, 0), trend='n').fit()
+    ar_model = ARIMA(z_t, order=(5, 0, 0), trend='n').fit()
     return ar_model
 
 def generate_forecast(ols_model, ar_model, start_date, last_date, h=365, alpha=0.05):
@@ -140,11 +140,9 @@ def plot_residuals_forecast(z_train, z_hat, z_lower, z_upper, z_test):
     
     plt.plot(z_train_narrow.index, z_train_narrow, label='Actual Residuals (Train)', color='blue', alpha=0.6)
     plt.plot(z_test.index, z_test, label='Actual Residuals (Test)', color='black', alpha=0.8)
-    plt.plot(z_hat.index, z_hat, label='AR(8) Residual Forecast', color='red', linestyle='--')
-    
+    plt.plot(z_hat.index, z_hat, label='ARMA(1,1) Residual Forecast', color='red', linestyle='--')
     plt.fill_between(z_hat.index, z_lower, z_upper, color='red', alpha=0.15, label='95% CI')
-    
-    plt.title('Stochastic Component Evaluation: AR(8) Forecast of Residuals (Z_t)')
+    plt.title('Stochastic Component Evaluation: AR(1) Forecast of Residuals (Z_t)')
     plt.ylabel('Stationary Residuals')
     plt.legend()
     plt.grid(True, alpha=0.3)
@@ -183,7 +181,7 @@ def main():
     
     # Split into train and test (for evaluation)
     # Using the split date defined in the script
-    split_date = '2025-12-31'
+    split_date = '2025-12-31' 
     y_train = y_full[y_full.index <= split_date]
     y_test = y_full[y_full.index > split_date]
     
@@ -204,6 +202,17 @@ def main():
     # 5. Forecasting
     h_days = len(y_test)
     res = generate_forecast(ols_model, ar_model, start_date, last_date, h=h_days)
+
+    # --- Calculate Error Metrics ---
+    rmse = np.sqrt(mean_squared_error(y_test, res['y_hat']))
+    mae = mean_absolute_error(y_test, res['y_hat'])
+    mape = mean_absolute_percentage_error(y_test, res['y_hat']) * 100
+    
+    print("\n--- Forecast Metrics (AR 2) ---")
+    print(f"RMSE: {rmse:.2f}")
+    print(f"MAE:  {mae:.2f}")
+    print(f"MAPE: {mape:.2f}%")
+    print("---------------------------------------------")
     
     # 6. Calculate test Residuals for the evaluation period
     # (Log test - Deterministic Prediction for that period)
